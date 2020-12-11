@@ -173,7 +173,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1d5a4810834418d4a82ed798bf030e71, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetObjectMode: 0
+  targetObjectMode: 1
   importedObject: {fileID: 6352563826695141101}
   matrixSize: {x: 25, y: 25}
 --- !u!4 &64928998
@@ -215,7 +215,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca9deceb60446974caddab301d8e0d44, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  simulationMode: 0
+  simulationMode: 1
   particleMass: 1
   verletConstants:
     constraintIterations: 2
@@ -245,10 +245,10 @@ MonoBehaviour:
     forceConstant: 100
     type: 0
   gravityForce:
-    enabled: 0
+    enabled: 1
     gravity: 10
   windForce:
-    enabled: 0
+    enabled: 1
     strength: 10
     frequency: 0.2
     direction: {x: -0.2, y: 0.15, z: 0.85}
