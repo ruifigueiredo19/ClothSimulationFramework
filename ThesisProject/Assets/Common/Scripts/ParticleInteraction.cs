@@ -19,26 +19,15 @@ public class ParticleInteraction : IEquatable<ParticleInteraction> {
         this.equilibriumDistance = equilibriumDistance;
     }
 
-
-    // Comparison Operators. They disregard equilibrium distance.
-    public static bool operator ==(ParticleInteraction interactionA, ParticleInteraction interactionB) {
-        return (interactionA.interactionType == interactionB.interactionType) &&
-            ((interactionA.particle1 == interactionB.particle1 && interactionA.particle2 == interactionB.particle2) ||
-            (interactionA.particle1 == interactionB.particle2 && interactionA.particle2 == interactionB.particle1));
-    }
-
-    public static bool operator !=(ParticleInteraction interactionA, ParticleInteraction interactionB) {
-        return !(interactionA == interactionB);
-    }
-
-
     public override bool Equals(object obj) {
-        return Equals(obj as ParticleInteraction);
+        if (!(obj is ParticleInteraction other)) return false;
+        return (interactionType == other.interactionType) &&
+            ((particle1 == other.particle1 && particle2 == other.particle2) || (particle1 == other.particle2 && particle2 == other.particle1));
     }
 
     public bool Equals(ParticleInteraction other) {
-        // Use == operator as particle1 and particle2 are interchangeable
-        return other != null && this == other;
+        return (interactionType == other.interactionType) &&
+            ((particle1 == other.particle1 && particle2 == other.particle2) || (particle1 == other.particle2 && particle2 == other.particle1));
     }
 
     public override int GetHashCode() {

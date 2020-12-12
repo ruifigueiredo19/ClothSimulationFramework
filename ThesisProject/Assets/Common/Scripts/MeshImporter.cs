@@ -50,12 +50,6 @@ public static class MeshImporter {
             particlePositions = particlePositions,
             particleInteractions = particleInteractions
         };
-        /*
-        int debug_ix = 0;
-        Debug.Log("Stretch: " + Utils.ArrayToString(stretchIndices[debug_ix].ToArray()));
-        Debug.Log("Shear: " + Utils.ArrayToString(shearIndices[debug_ix].ToArray()));
-        Debug.Log("Bend: " + Utils.ArrayToString(bendIndices[debug_ix].ToArray()));
-        */
         return meshModelData;
     }
 
@@ -93,22 +87,6 @@ public static class MeshImporter {
         }
 
         return stretchIndices;
-
-        /*
-        for (int debug_ix = 0; debug_ix < nParticles; debug_ix++) {
-            int[] debugIndicesArray1 = new int[stretchIndices[debug_ix].Count];
-            stretchIndices[debug_ix].CopyTo(debugIndicesArray1);
-            Debug.Log($"{debug_ix} -> {Utils.ArrayToString(debugIndicesArray1)}");
-        }
-        //*/
-
-        /*
-        HashSet<int>[] stretchIndices = new HashSet<int>[nParticles];
-        for (int i = 0; i < nParticles; i++) {
-            stretchIndices[i] = new HashSet<int>();
-        }
-        return stretchIndices;
-        //*/
     }
 
 
@@ -289,9 +267,8 @@ public static class MeshImporter {
                 particleInteractions.Add(interaction);
             }
         }
-        
-        return particleInteractions;
 
+        return particleInteractions;
     }
 }
 
