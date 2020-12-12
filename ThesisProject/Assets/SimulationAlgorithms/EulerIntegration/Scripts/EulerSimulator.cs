@@ -40,7 +40,7 @@ public class EulerSimulator : BaseSimulator<EulerParticle> {
         }
         // */
 
-        //*
+        /*
         // Imported Cylinder
         int[] topParticlesIndices = { 20, 21, 22, 23, 24, 28, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96, 102, 108, 114 };
         foreach (int i in topParticlesIndices) {

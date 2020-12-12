@@ -215,7 +215,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca9deceb60446974caddab301d8e0d44, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  simulationMode: 1
+  simulationMode: 0
   particleMass: 1
   verletConstants:
     constraintIterations: 2
@@ -245,10 +245,10 @@ MonoBehaviour:
     forceConstant: 100
     type: 0
   gravityForce:
-    enabled: 1
+    enabled: 0
     gravity: 10
   windForce:
-    enabled: 1
+    enabled: 0
     strength: 10
     frequency: 0.2
     direction: {x: -0.2, y: 0.15, z: 0.85}
@@ -503,7 +503,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   gizmoEnabled: 1
-  index: 0
+  index: 99
 --- !u!4 &1151388028060397195
 Transform:
   m_ObjectHideFlags: 0
@@ -697,7 +697,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   gizmoEnabled: 1
-  index: 0
+  index: 2
 --- !u!4 &6562645958970416399
 Transform:
   m_ObjectHideFlags: 0

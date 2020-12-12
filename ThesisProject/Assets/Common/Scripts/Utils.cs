@@ -18,5 +18,4 @@ public static class Utils {
 
         return sb.ToString();
     }
-
 }

@@ -39,9 +39,9 @@ public static class MeshImporter {
         //Debug.Log($"Total Vertices: {mesh.vertexCount}. Particles: {currentVertexIndex}");
         int nParticles = currentVertexIndex;
         Vector3[] particlePositions = positionsList.ToArray();
-        List<int>[] stretchIndices = GetStretchIndices(mesh, nParticles, duplicatedVertexIndicesMap, newVertexIndicesMap);
-        List<int>[] shearIndices = GetShearIndices(mesh, nParticles, duplicatedVertexIndicesMap, newVertexIndicesMap);
-        List<int>[] bendIndices = GetBendIndices(mesh, nParticles, duplicatedVertexIndicesMap, newVertexIndicesMap);
+        HashSet<int>[] stretchIndices = GetStretchIndices(mesh, nParticles, duplicatedVertexIndicesMap, newVertexIndicesMap);
+        HashSet<int>[] shearIndices = GetShearIndices(mesh, nParticles, duplicatedVertexIndicesMap, newVertexIndicesMap);
+        HashSet<int>[] bendIndices = GetBendIndices(mesh, nParticles, duplicatedVertexIndicesMap, newVertexIndicesMap);
 
         List<ParticleInteraction> particleInteractions = GetParticleInteractionList(nParticles, stretchIndices, shearIndices, bendIndices, particlePositions);
 
@@ -59,156 +59,91 @@ public static class MeshImporter {
         return meshModelData;
     }
 
-    static List<int>[] GetStretchIndices(Mesh mesh,
-                                         int nParticles,
-                                         Dictionary<int, int> duplicatedVertexIndicesMap,
-                                         Dictionary<int, int> newVertexIndicesMap) {
+    static HashSet<int>[] GetStretchIndices(Mesh mesh,
+                                            int nParticles,
+                                            Dictionary<int, int> duplicatedVertexIndicesMap,
+                                            Dictionary<int, int> newVertexIndicesMap) {
 
-
-        List<int>[] stretchIndices = new List<int>[nParticles];
+        HashSet<int>[] stretchIndices = new HashSet<int>[nParticles];
         int[] meshIndices = mesh.GetIndices(0);
 
-        // iterate over each particle
-        for (int i = 0; i < nParticles; i++) {
-            // Find stretch friends for that particle: Iterate over each quad
-            List<int> particleStretchIndices = new List<int>();
 
-            for (int originalMeshIndex = 0; originalMeshIndex < meshIndices.Length; originalMeshIndex++) {
+        for (int particleIndex = 0; particleIndex < nParticles; particleIndex++) {
+            HashSet<int> particleStretchIndices = new HashSet<int>();
 
-                // Read index, map value to proper value
-                int mappedMeshIndex = GetMappedIndex(meshIndices[originalMeshIndex], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                //Debug.Log($"Mapping originalMeshIndex {meshIndices[originalMeshIndex]} => {mappedMeshIndex}");
+            // Find faces that contain that particle
+            for (int meshIndex = 0; meshIndex < meshIndices.Length; meshIndex++) {
 
-                // Not the index we are looking for...
-                if (mappedMeshIndex != i) {
+                // To compare if the same, map mesh index to a particle index
+                int mappedMeshParticleIndex = GetMappedIndex(meshIndices[meshIndex], duplicatedVertexIndicesMap, newVertexIndicesMap);
+                if (mappedMeshParticleIndex != particleIndex) {
                     continue;
                 }
 
-                // Found the index on a quad! Check it's position inside the quad and then add it to the indices list
-                int quadPosition = originalMeshIndex % 4;
-                if (quadPosition == 0) { //  && originalMeshIndex < meshIndices.Length - 3) {
-                    // Bottom left, so add right and above particle indices
-                    int bottom_right_particle_index = GetMappedIndex(meshIndices[originalMeshIndex + 3], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                    if (!particleStretchIndices.Contains(bottom_right_particle_index)) {
-                        particleStretchIndices.Add(bottom_right_particle_index);
-                    }
+                // Found a face with that particle, save face index and offset
+                int startIndexOfFace = meshIndex / 4 * 4;
+                int offsetIndexInsideFace = meshIndex - startIndexOfFace;
 
-                    int top_left_particle_index = GetMappedIndex(meshIndices[originalMeshIndex + 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                    if (!particleStretchIndices.Contains(top_left_particle_index)) {
-                        particleStretchIndices.Add(top_left_particle_index);
-                    }
-                }
-
-                else if (quadPosition == 1) { 
-                    // Top left, so add top right and bottom left particle indices
-                    int top_right_particle_index = GetMappedIndex(meshIndices[originalMeshIndex + 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                    if (!particleStretchIndices.Contains(top_right_particle_index)) {
-                        particleStretchIndices.Add(top_right_particle_index);
-                    }
-
-                    int bottom_left_particle_index = GetMappedIndex(meshIndices[originalMeshIndex - 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                    if (!particleStretchIndices.Contains(bottom_left_particle_index)) {
-                        particleStretchIndices.Add(bottom_left_particle_index);
-                    }
-                }
-
-                else if (quadPosition == 2) {
-                    // Top right, so add top left and bottom right particle indices
-                    int top_left_particle_index = GetMappedIndex(meshIndices[originalMeshIndex - 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                    if (!particleStretchIndices.Contains(top_left_particle_index)) {
-                        particleStretchIndices.Add(top_left_particle_index);
-                    }
-
-                    int bottom_right_particle_index = GetMappedIndex(meshIndices[originalMeshIndex + 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                    if (!particleStretchIndices.Contains(bottom_right_particle_index)) {
-                        particleStretchIndices.Add(bottom_right_particle_index);
-                    }
-                }
-
-                else if (quadPosition == 3) {
-                    // Bottom right, so add top right and bottom left particle indices
-                    int top_right_particle_index = GetMappedIndex(meshIndices[originalMeshIndex - 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                    if (!particleStretchIndices.Contains(top_right_particle_index)) {
-                        particleStretchIndices.Add(top_right_particle_index);
-                    }
-
-                    int bottom_left_particle_index = GetMappedIndex(meshIndices[originalMeshIndex - 3], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                    if (!particleStretchIndices.Contains(bottom_left_particle_index)) {
-                        particleStretchIndices.Add(bottom_left_particle_index);
-                    }
-                }
+                // Add interaction with adjacent vertices
+                particleStretchIndices.Add(GetMappedIndex(meshIndices[startIndexOfFace + (offsetIndexInsideFace + 1) % 4], duplicatedVertexIndicesMap, newVertexIndicesMap));
+                particleStretchIndices.Add(GetMappedIndex(meshIndices[startIndexOfFace + (offsetIndexInsideFace + 3) % 4], duplicatedVertexIndicesMap, newVertexIndicesMap));
             }
 
-            // Finished looping over all possible quads.
-            stretchIndices[i] = particleStretchIndices;
+            stretchIndices[particleIndex] = particleStretchIndices;
         }
 
         return stretchIndices;
+
+        /*
+        for (int debug_ix = 0; debug_ix < nParticles; debug_ix++) {
+            int[] debugIndicesArray1 = new int[stretchIndices[debug_ix].Count];
+            stretchIndices[debug_ix].CopyTo(debugIndicesArray1);
+            Debug.Log($"{debug_ix} -> {Utils.ArrayToString(debugIndicesArray1)}");
+        }
+        //*/
+
+        /*
+        HashSet<int>[] stretchIndices = new HashSet<int>[nParticles];
+        for (int i = 0; i < nParticles; i++) {
+            stretchIndices[i] = new HashSet<int>();
+        }
+        return stretchIndices;
+        //*/
     }
 
 
-    static List<int>[] GetShearIndices(Mesh mesh,
-                                       int nParticles,
-                                       Dictionary<int, int> duplicatedVertexIndicesMap,
-                                       Dictionary<int, int> newVertexIndicesMap) {
+    static HashSet<int>[] GetShearIndices(Mesh mesh,
+                                          int nParticles,
+                                          Dictionary<int, int> duplicatedVertexIndicesMap,
+                                          Dictionary<int, int> newVertexIndicesMap) {
 
 
-        List<int>[] shearIndices = new List<int>[nParticles];
+
+        HashSet<int>[] shearIndices = new HashSet<int>[nParticles];
         int[] meshIndices = mesh.GetIndices(0);
 
-        // iterate over each particle
-        for (int i = 0; i < nParticles; i++) {
-            // Find stretch friends for that particle: Iterate over each quad
-            List<int> particleShearIndices = new List<int>();
 
-            for (int originalMeshIndex = 0; originalMeshIndex < meshIndices.Length; originalMeshIndex++) {
+        for (int particleIndex = 0; particleIndex < nParticles; particleIndex++) {
+            HashSet<int> particleShearIndices = new HashSet<int>();
 
-                // Read index, map value to proper value
-                int mappedMeshIndex = GetMappedIndex(meshIndices[originalMeshIndex], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                //Debug.Log($"Mapping originalMeshIndex {meshIndices[originalMeshIndex]} => {mappedMeshIndex}");
+            // Find faces that contain that particle
+            for (int meshIndex = 0; meshIndex < meshIndices.Length; meshIndex++) {
 
-                // Not the index we are looking for...
-                if (mappedMeshIndex != i) {
+                // To compare if the same, map mesh index to a particle index
+                int mappedMeshParticleIndex = GetMappedIndex(meshIndices[meshIndex], duplicatedVertexIndicesMap, newVertexIndicesMap);
+                if (mappedMeshParticleIndex != particleIndex) {
                     continue;
                 }
 
-                // Found the index on a quad! Check it's position inside the quad and then add it to the indices list
-                int quadPosition = originalMeshIndex % 4;
-                if (quadPosition == 0) {
-                    // Bottom left, so top right
-                    int top_right_particle_index = GetMappedIndex(meshIndices[originalMeshIndex + 2], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                    if (!particleShearIndices.Contains(top_right_particle_index)) {
-                        particleShearIndices.Add(top_right_particle_index);
-                    }
-                }
+                // Found a face with that particle, save face index and offset
+                int startIndexOfFace = meshIndex / 4 * 4;
+                int offsetIndexInsideFace = meshIndex - startIndexOfFace;
 
-                else if (quadPosition == 1) {
-                    // Top left, so add bottom right
-                    int bottom_right_particle_index = GetMappedIndex(meshIndices[originalMeshIndex + 2], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                    if (!particleShearIndices.Contains(bottom_right_particle_index)) {
-                        particleShearIndices.Add(bottom_right_particle_index);
-                    }
-                }
-
-                else if (quadPosition == 2) {
-                    // Top right, so add bottom left
-                    int bottom_left_particle_index = GetMappedIndex(meshIndices[originalMeshIndex - 2], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                    if (!particleShearIndices.Contains(bottom_left_particle_index)) {
-                        particleShearIndices.Add(bottom_left_particle_index);
-                    }
-                }
-
-                else if (quadPosition == 3) {
-                    // Bottom right, so add top left
-                    int top_left_particle_index = GetMappedIndex(meshIndices[originalMeshIndex - 2], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                    if (!particleShearIndices.Contains(top_left_particle_index)) {
-                        particleShearIndices.Add(top_left_particle_index);
-                    }
-                }
+                // Add interaction with adjacent vertices
+                particleShearIndices.Add(GetMappedIndex(meshIndices[startIndexOfFace + (offsetIndexInsideFace + 2) % 4], duplicatedVertexIndicesMap, newVertexIndicesMap));
             }
 
-            // Finished looping over all possible quads.
-            shearIndices[i] = particleShearIndices;
+            shearIndices[particleIndex] = particleShearIndices;
         }
 
         return shearIndices;
@@ -216,285 +151,90 @@ public static class MeshImporter {
 
 
 
-    static List<int>[] GetBendIndices(Mesh mesh,
-                                      int nParticles,
-                                      Dictionary<int, int> duplicatedVertexIndicesMap,
-                                      Dictionary<int, int> newVertexIndicesMap) {
+    static HashSet<int>[] GetBendIndices(Mesh mesh,
+                                         int nParticles,
+                                         Dictionary<int, int> duplicatedVertexIndicesMap,
+                                         Dictionary<int, int> newVertexIndicesMap) {
 
-        List<int>[] bendIndices = new List<int>[nParticles];
+
+
+        HashSet<int>[] bendIndices = new HashSet<int>[nParticles];
         int[] meshIndices = mesh.GetIndices(0);
 
-        // iterate over each particle
-        for (int i = 0; i < nParticles; i++) {
-            // Find stretch friends for that particle: Iterate over each quad
-            List<int> particleBendIndices = new List<int>();
-            //bendIndices[i] = particleBendIndices; continue;
 
-            //int[] quadMeshIndices = System.Array.FindAll(meshIndices, ix => GetMappedIndex(ix, duplicatedVertexIndicesMap, newVertexIndicesMap) == i);
-          
-            
-            for (int originalMeshIndex = 0; originalMeshIndex < meshIndices.Length; originalMeshIndex++) {
-                // Read index, map value to proper value
-                int mappedMeshIndex = GetMappedIndex(meshIndices[originalMeshIndex], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                //Debug.Log($"Mapping originalMeshIndex {meshIndices[originalMeshIndex]} => {mappedMeshIndex}");
+        for (int particleIndex = 0; particleIndex < nParticles; particleIndex++) {
+            HashSet<int> particleBendIndices = new HashSet<int>();
 
-                // Not the index we are looking for...
-                if (mappedMeshIndex != i) {
+            // Search for the faces with that particle
+            List<int> startIndicesOfFaces = new List<int>();
+            //List<int> offsetIndicesInsideFaces = new List<int>();
+            HashSet<int> adjacentsOfAdjacentIndices = new HashSet<int>();
+
+            // Find ALL faces that contain that particle
+            for (int meshIndex = 0; meshIndex < meshIndices.Length; meshIndex++) {
+
+                // To compare if the same, map mesh index to a particle index
+                int mappedMeshParticleIndex = GetMappedIndex(meshIndices[meshIndex], duplicatedVertexIndicesMap, newVertexIndicesMap);
+                if (mappedMeshParticleIndex != particleIndex) {
                     continue;
                 }
 
-                int quadPosition = originalMeshIndex % 4;
-
-
-                if (quadPosition == 0) {
-                    // Bottom left particle
-
-                    // Top-Top Particle
-                    // First, find top in the same quad
-                    int top_left_particle_index = GetMappedIndex(meshIndices[originalMeshIndex + 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                    // Search quads where top particle is on the bottom
-
-
-                    for (int top_top_index = 0; top_top_index < meshIndices.Length; top_top_index++) {
-                        int mappedNeighbourMeshIndex = GetMappedIndex(meshIndices[top_top_index], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                        if (mappedNeighbourMeshIndex != top_left_particle_index) {
-                            continue;
-                        }
-
-
-                        // Bottom left
-                        if (top_top_index % 4 == 0) {
-                            int top_top_particle_index = GetMappedIndex(meshIndices[top_top_index + 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                            if (!particleBendIndices.Contains(top_top_particle_index)) {
-                                particleBendIndices.Add(top_top_particle_index);
-                            }
-                        }
-                        // Bottom right
-                        if (top_top_index % 4 == 3) {
-                            int top_top_particle_index = GetMappedIndex(meshIndices[top_top_index - 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                            if (!particleBendIndices.Contains(top_top_particle_index)) {
-                                particleBendIndices.Add(top_top_particle_index);
-                            }
-                        }
-                    }
-
-                    // Right-Right Particle
-                    // First, find top in the same quad
-                    int bottom_right_particle_index = GetMappedIndex(meshIndices[originalMeshIndex + 3], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                    // Search quads where right particle is on the left
-
-                    for (int right_right_index = 0; right_right_index < meshIndices.Length; right_right_index++) {
-
-                        int mappedNeighbourMeshIndex = GetMappedIndex(meshIndices[right_right_index], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                        if (mappedNeighbourMeshIndex != bottom_right_particle_index) {
-                            continue;
-                        }
-
-
-                        // Bottom left
-                        if (right_right_index % 4 == 0) {
-                            int right_right_particle_index = GetMappedIndex(meshIndices[right_right_index + 3], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                            if (!particleBendIndices.Contains(right_right_particle_index)) {
-                                particleBendIndices.Add(right_right_particle_index);
-                            }
-                        }
-                        // Top left
-                        if (right_right_index % 4 == 1) {
-                            int right_right_particle_index = GetMappedIndex(meshIndices[right_right_index + 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                            if (!particleBendIndices.Contains(right_right_particle_index)) {
-                                particleBendIndices.Add(right_right_particle_index);
-                            }
-                        }
-                    }
-
+                // Found a face with that particle, save face index and offset
+                int startIndexOfFace = meshIndex / 4 * 4;
+                int offsetIndexInsideFace = meshIndex - startIndexOfFace;
+                if (!startIndicesOfFaces.Contains(startIndexOfFace)) {
+                    startIndicesOfFaces.Add(startIndexOfFace);
+                    //offsetIndicesInsideFaces.Add(offsetIndexInsideFace);
                 }
 
 
-                if (quadPosition == 1) {
-                    // Top left particle
+                // Get adjacent
+                int adjacentParticleIndex1 = GetMappedIndex(meshIndices[startIndexOfFace + (offsetIndexInsideFace + 1) % 4], duplicatedVertexIndicesMap, newVertexIndicesMap);
+                int adjacentParticleIndex2 = GetMappedIndex(meshIndices[startIndexOfFace + (offsetIndexInsideFace + 3) % 4], duplicatedVertexIndicesMap, newVertexIndicesMap);
 
-                    // Bottom-Bottom Particle
-                    int bottom_left_particle_index = GetMappedIndex(meshIndices[originalMeshIndex - 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                    // Search quads where bottom particle is on the top
+                // Find ALL faces that contain that adjacent particles
+                for (int adjacentMeshIndex = 0; adjacentMeshIndex < meshIndices.Length; adjacentMeshIndex++) {
 
-                    for (int bottom_bottom_index = 0; bottom_bottom_index < meshIndices.Length; bottom_bottom_index++) {
-                        int mappedNeighbourMeshIndex = GetMappedIndex(meshIndices[bottom_bottom_index], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                        if (mappedNeighbourMeshIndex != bottom_left_particle_index) {
-                            continue;
-                        }
-
-
-                        // Top left
-                        if (bottom_bottom_index % 4 == 1) {
-                            int bottom_bottom_particle_index = GetMappedIndex(meshIndices[bottom_bottom_index - 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                            if (!particleBendIndices.Contains(bottom_bottom_particle_index)) {
-                                particleBendIndices.Add(bottom_bottom_particle_index);
-                            }
-                        }
-                        // Top right
-                        if (bottom_bottom_index % 4 == 2) {
-                            int bottom_bottom_particle_index = GetMappedIndex(meshIndices[bottom_bottom_index + 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                            if (!particleBendIndices.Contains(bottom_bottom_particle_index)) {
-                                particleBendIndices.Add(bottom_bottom_particle_index);
-                            }
-                        }
+                    // To compare if the same, map adjacent mesh index to a particle index
+                    int mappedAdjacentParticleIndex = GetMappedIndex(meshIndices[adjacentMeshIndex], duplicatedVertexIndicesMap, newVertexIndicesMap);
+                    if (mappedAdjacentParticleIndex != adjacentParticleIndex1 && mappedAdjacentParticleIndex != adjacentParticleIndex2) {
+                        continue;
                     }
 
-                    // Right-Right Particle
-                    // First, find top in the same quad
-                    int top_right_particle_index = GetMappedIndex(meshIndices[originalMeshIndex + 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                    // Search quads where right particle is on the left
-                    for (int right_right_index = 0; right_right_index < meshIndices.Length; right_right_index++) {
 
-                        int mappedNeighbourMeshIndex = GetMappedIndex(meshIndices[right_right_index], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                        if (mappedNeighbourMeshIndex != top_right_particle_index) {
-                            continue;
-                        }
-
-
-                        // Bottom left
-                        if (right_right_index % 4 == 0) {
-                            int right_right_particle_index = GetMappedIndex(meshIndices[right_right_index + 3], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                            if (!particleBendIndices.Contains(right_right_particle_index)) {
-                                particleBendIndices.Add(right_right_particle_index);
-                            }
-                        }
-                        // Top left
-                        if (right_right_index % 4 == 1) {
-                            int right_right_particle_index = GetMappedIndex(meshIndices[right_right_index + 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                            if (!particleBendIndices.Contains(right_right_particle_index)) {
-                                particleBendIndices.Add(right_right_particle_index);
-                            }
-                        }
-                    }
-
+                    // Found a face with that adjacent, save adjacent of adjacent
+                    int startIndexOfAdjacentFace = adjacentMeshIndex / 4 * 4;
+                    int offsetIndexInsideAdjacentFace = adjacentMeshIndex - startIndexOfAdjacentFace;
+                    adjacentsOfAdjacentIndices.Add(startIndexOfAdjacentFace + (offsetIndexInsideAdjacentFace + 1) % 4);
+                    adjacentsOfAdjacentIndices.Add(startIndexOfAdjacentFace + (offsetIndexInsideAdjacentFace + 3) % 4);
                 }
-
-
-                if (quadPosition == 2) {
-                    // Top right particle
-
-                    // Bottom-Bottom Particle
-                    int bottom_right_particle_index = GetMappedIndex(meshIndices[originalMeshIndex + 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                    // Search quads where bottom particle is on the top
-
-                    for (int bottom_bottom_index = 0; bottom_bottom_index < meshIndices.Length; bottom_bottom_index++) {
-                        int mappedNeighbourMeshIndex = GetMappedIndex(meshIndices[bottom_bottom_index], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                        if (mappedNeighbourMeshIndex != bottom_right_particle_index) {
-                            continue;
-                        }
-
-
-                        // Top left
-                        if (bottom_bottom_index % 4 == 1) {
-                            int bottom_bottom_particle_index = GetMappedIndex(meshIndices[bottom_bottom_index - 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                            if (!particleBendIndices.Contains(bottom_bottom_particle_index)) {
-                                particleBendIndices.Add(bottom_bottom_particle_index);
-                            }
-                        }
-                        // Top right
-                        if (bottom_bottom_index % 4 == 2) {
-                            int bottom_bottom_particle_index = GetMappedIndex(meshIndices[bottom_bottom_index + 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                            if (!particleBendIndices.Contains(bottom_bottom_particle_index)) {
-                                particleBendIndices.Add(bottom_bottom_particle_index);
-                            }
-                        }
-                    }
-
-                    // Left-Left Particle
-                    // First, find top in the same quad
-                    int top_left_particle_index = GetMappedIndex(meshIndices[originalMeshIndex - 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                    // Search quads where left particle is on the right
-                    for (int left_left_index = 0; left_left_index < meshIndices.Length; left_left_index++) {
-
-                        int mappedNeighbourMeshIndex = GetMappedIndex(meshIndices[left_left_index], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                        if (mappedNeighbourMeshIndex != top_left_particle_index) {
-                            continue;
-                        }
-
-
-                        // Top Right
-                        if (left_left_index % 4 == 2) {
-                            int left_left_particle_index = GetMappedIndex(meshIndices[left_left_index - 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                            if (!particleBendIndices.Contains(left_left_particle_index)) {
-                                particleBendIndices.Add(left_left_particle_index);
-                            }
-                        }
-                        // Bottom Right
-                        if (left_left_index % 4 == 3) {
-                            int left_left_particle_index = GetMappedIndex(meshIndices[left_left_index - 3], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                            if (!particleBendIndices.Contains(left_left_particle_index)) {
-                                particleBendIndices.Add(left_left_particle_index);
-                            }
-                        }
-                    }
-                }
-
-
-                if (quadPosition == 3) {
-                    // Bottom right particle
-
-
-                    // Top-Top Particle
-                    // First, find top in the same quad
-                    int top_right_particle_index = GetMappedIndex(meshIndices[originalMeshIndex - 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                    // Search quads where top particle is on the bottom
-
-                    for (int top_top_index = 0; top_top_index < meshIndices.Length; top_top_index++) {
-                        int mappedNeighbourMeshIndex = GetMappedIndex(meshIndices[top_top_index], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                        if (mappedNeighbourMeshIndex != top_right_particle_index) {
-                            continue;
-                        }
-
-
-                        // Bottom left
-                        if (top_top_index % 4 == 0) {
-                            int top_top_particle_index = GetMappedIndex(meshIndices[top_top_index + 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                            if (!particleBendIndices.Contains(top_top_particle_index)) {
-                                particleBendIndices.Add(top_top_particle_index);
-                            }
-                        }
-                        // Bottom right
-                        if (top_top_index % 4 == 3) {
-                            int top_top_particle_index = GetMappedIndex(meshIndices[top_top_index - 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                            if (!particleBendIndices.Contains(top_top_particle_index)) {
-                                particleBendIndices.Add(top_top_particle_index);
-                            }
-                        }
-                    }
-
-                    // Left-Left Particle
-                    // First, find top in the same quad
-                    int bottom_left_particle_index = GetMappedIndex(meshIndices[originalMeshIndex - 3], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                    // Search quads where left particle is on the right
-                    for (int left_left_index = 0; left_left_index < meshIndices.Length; left_left_index++) {
-
-                        int mappedNeighbourMeshIndex = GetMappedIndex(meshIndices[left_left_index], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                        if (mappedNeighbourMeshIndex != bottom_left_particle_index) {
-                            continue;
-                        }
-
-
-                        // Top Right
-                        if (left_left_index % 4 == 2) {
-                            int left_left_particle_index = GetMappedIndex(meshIndices[left_left_index - 1], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                            if (!particleBendIndices.Contains(left_left_particle_index)) {
-                                particleBendIndices.Add(left_left_particle_index);
-                            }
-                        }
-                        // Bottom Right
-                        if (left_left_index % 4 == 3) {
-                            int left_left_particle_index = GetMappedIndex(meshIndices[left_left_index - 3], duplicatedVertexIndicesMap, newVertexIndicesMap);
-                            if (!particleBendIndices.Contains(left_left_particle_index)) {
-                                particleBendIndices.Add(left_left_particle_index);
-                            }
-                        }
-                    }
-                } 
             }
 
-            // Finished looping over all possible quads.
-            bendIndices[i] = particleBendIndices;
+            // Make sure the adjacent of adjacent aren't in the original faces
+            foreach (int adjacentOfAdjacentIndex in adjacentsOfAdjacentIndices) {
+                bool inOriginalFace = false;
+                int mappedAdjacentOfAdjacentParticleIndex = GetMappedIndex(meshIndices[adjacentOfAdjacentIndex], duplicatedVertexIndicesMap, newVertexIndicesMap);
+
+                foreach (int startFaceIndex in startIndicesOfFaces) {
+                    for (int offset = 0; offset < 4; offset++) {
+                        if (mappedAdjacentOfAdjacentParticleIndex == GetMappedIndex(meshIndices[startFaceIndex + offset], duplicatedVertexIndicesMap, newVertexIndicesMap)) {
+                            inOriginalFace = true;
+                            break;
+                        }
+                    }
+
+                    if (inOriginalFace) {
+                        break;
+                    }
+                }
+
+                // Add it to particleBendIndices
+                if (!inOriginalFace) {
+                    particleBendIndices.Add(mappedAdjacentOfAdjacentParticleIndex);
+                }
+            }
+
+            bendIndices[particleIndex] = particleBendIndices;
         }
 
         return bendIndices;
@@ -515,9 +255,9 @@ public static class MeshImporter {
 
 
     static List<ParticleInteraction> GetParticleInteractionList(int nParticles,
-                                                                List<int>[] stretchIndices,
-                                                                List<int>[] shearIndices,
-                                                                List<int>[] bendIndices,
+                                                                HashSet<int>[] stretchIndices,
+                                                                HashSet<int>[] shearIndices,
+                                                                HashSet<int>[] bendIndices,
                                                                 Vector3[] particlePositions) {
 
 
@@ -540,7 +280,7 @@ public static class MeshImporter {
                 particleInteractions.Add(interaction);
             }
         }
-        /*
+        
         // Add bend interactions
         for (int particle1Index = 0; particle1Index < nParticles; particle1Index++) {
             foreach (int particle2Index in bendIndices[particle1Index]) {
@@ -549,7 +289,7 @@ public static class MeshImporter {
                 particleInteractions.Add(interaction);
             }
         }
-        */
+        
         return particleInteractions;
 
     }
