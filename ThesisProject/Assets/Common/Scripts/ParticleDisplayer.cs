@@ -84,7 +84,7 @@ public class ParticleDisplayer : MonoBehaviour {
 
         for (int i = 0; i < TargetManager.NParticles; i++) {
             particleTransform = particles[i].transform;
-            particleTransform.position = SimulationManager.Particles[i].Position;
+            particleTransform.localPosition = SimulationManager.Particles[i].Position;
             particleTransform.hasChanged = false;  // don't detect this as a editor dragging event
         }
     }
@@ -134,21 +134,22 @@ public class ParticleDisplayer : MonoBehaviour {
                 Debug.LogWarning("Manager didn't have neighbour indices calculated.");
             }
 
+            Vector3 offset = ParticleHolder.position;
             foreach (ParticleInteraction interaction in SimulationManager.ParticleInteractions) {
                 switch (interaction.interactionType) {
                     case InteractionType.Stretch:
                         if (SimulationManager.stretchForce.enabled) {
-                            Debug.DrawLine(SimulationManager.Particles[interaction.particle1].Position, SimulationManager.Particles[interaction.particle2].Position, stretchSpringColor);
+                            Debug.DrawLine(SimulationManager.Particles[interaction.particle1].Position + offset, SimulationManager.Particles[interaction.particle2].Position + offset, stretchSpringColor);
                         }
                         break;
                     case InteractionType.Shear:
                         if (SimulationManager.shearForce.enabled) {
-                            Debug.DrawLine(SimulationManager.Particles[interaction.particle1].Position, SimulationManager.Particles[interaction.particle2].Position, shearSpringColor);
+                            Debug.DrawLine(SimulationManager.Particles[interaction.particle1].Position + offset, SimulationManager.Particles[interaction.particle2].Position + offset, shearSpringColor);
                         }
                         break;
                     case InteractionType.Bend:
                         if (SimulationManager.bendForce.enabled) {
-                            Debug.DrawLine(SimulationManager.Particles[interaction.particle1].Position, SimulationManager.Particles[interaction.particle2].Position, bendSpringColor);
+                            Debug.DrawLine(SimulationManager.Particles[interaction.particle1].Position + offset, SimulationManager.Particles[interaction.particle2].Position + offset, bendSpringColor);
                         }
                         break;
                 }
@@ -166,7 +167,7 @@ public class ParticleDisplayer : MonoBehaviour {
             particleTransform = particles[i].transform;
             if (particleTransform.hasChanged) {
                 // This will move the particle in the simulator data, and reset it's speed to 0
-                SimulationManager.ParticleWasDragged(i, particleTransform.position);
+                SimulationManager.ParticleWasDragged(i, particleTransform.localPosition);
                 particleTransform.hasChanged = false;
             }
         }

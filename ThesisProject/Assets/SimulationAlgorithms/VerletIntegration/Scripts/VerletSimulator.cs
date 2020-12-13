@@ -34,7 +34,7 @@ public class VerletSimulator : BaseSimulator<VerletParticle> {
         }
         // */
 
-        /*
+        //*
         // Top Edges on each side fixed
         for (int i = 0; i < 3; i++) {
             particles[i].isFixed = true;
@@ -88,6 +88,10 @@ public class VerletSimulator : BaseSimulator<VerletParticle> {
         for (int interactionIndex = particleInteractions.Count - 1; interactionIndex >= 0; interactionIndex--) {
             ParticleInteraction interaction = particleInteractions[interactionIndex];
 
+            // Only satisfy constraints for enabled interactions
+            if (!simulationManager.GetSpringForce(interaction.interactionType).enabled) {
+                continue;
+            }
             // If tearing, check how far apart the particles are and maybe remove them from the list
             if (constants.enableTearing) {
                 float magnitude = (particles[interaction.particle1].Position - particles[interaction.particle2].Position).magnitude;

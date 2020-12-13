@@ -32,7 +32,7 @@ public class EulerSimulator : BaseSimulator<EulerParticle> {
         }
         // */
 
-        /*
+        //*
         // Top Edges on each side fixed
         for (int i = 0; i < 3; i++) {
             particles[i].isFixed = true;
